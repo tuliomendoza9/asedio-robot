@@ -1,0 +1,184 @@
+<meta charset="utf-8">
+<title>Editor de pantalla de inicio — ASEDIO ROBOT</title>
+<style>
+  :root{--panel:#1b2a52;--panel2:#22335f;--line:rgba(255,255,255,.12);--gold:#ffc23c;--muted:#9db0da;
+    --sans:system-ui,"Segoe UI",Roboto,Arial,sans-serif;--fat:"Arial Black",var(--sans)}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:var(--sans);background:linear-gradient(180deg,#182749,#0c1224);color:#fff;
+    min-height:100vh;padding:14px 10px 60px}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-family:var(--fat);font-size:19px;text-align:center;color:var(--gold);letter-spacing:1px;margin:4px 0 2px}
+  .sub{text-align:center;color:var(--muted);font-size:12.5px;margin:0 0 14px}
+  .cols{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;flex:1;min-width:290px;max-width:430px}
+  .panel h2{font-family:var(--fat);font-size:13px;margin:0 0 10px;color:#cdd8ff;letter-spacing:.5px}
+
+  .presets{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .preset{border:2px solid transparent;border-radius:13px;padding:10px 8px;cursor:pointer;text-align:center;
+    font-family:var(--fat);font-size:12px;letter-spacing:.4px;color:#fff}
+  .preset.on{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
+  .preset small{display:block;font-family:var(--sans);font-weight:600;font-size:10px;opacity:.85;margin-top:3px}
+
+  .campo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+  .campo label{font-size:12.5px;color:var(--muted);font-weight:700}
+  .campo input[type=color]{width:52px;height:34px;border:1px solid var(--line);border-radius:8px;background:none;padding:2px;cursor:pointer}
+  .campo input[type=checkbox]{width:22px;height:22px;accent-color:var(--gold)}
+
+  .exportar{width:100%;border:none;border-radius:14px;padding:14px;font-family:var(--fat);font-size:14px;
+    background:linear-gradient(180deg,#ffe08a,#f3a81f);color:#26160a;cursor:pointer;box-shadow:0 5px 0 #b9760d;margin-top:6px}
+  .exportar:active{transform:translateY(3px);box-shadow:0 2px 0 #b9760d}
+  #salida{width:100%;height:110px;background:#0a0f1f;color:#9fe6bd;border:1px solid var(--line);border-radius:10px;
+    font-family:Consolas,monospace;font-size:10.5px;margin-top:8px;padding:8px;display:none;white-space:pre;overflow:auto}
+  .copiar{display:none;width:100%;margin-top:6px;border:none;border-radius:11px;padding:11px;font-weight:800;
+    font-size:13px;background:#28b6a6;color:#04302b;cursor:pointer}
+
+  /* ===== vista previa ===== */
+  .telefono{width:300px;border-radius:34px;background:#05070f;padding:9px;margin:0 auto;
+    box-shadow:0 22px 50px rgba(0,0,0,.5)}
+  .pantalla{position:relative;border-radius:26px;overflow:hidden;height:600px}
+  .burbuja{position:absolute;border-radius:50%;pointer-events:none;animation:subir linear infinite}
+  @keyframes subir{from{transform:translateY(40px)}to{transform:translateY(-660px)}}
+  @media (prefers-reduced-motion:reduce){.burbuja{animation:none}}
+  .pv-titulo{font-family:var(--fat);font-size:31px;text-align:center;margin:52px 0 4px;letter-spacing:1px;line-height:1.05}
+  .pv-lema{text-align:center;font-size:11.5px;font-weight:600;margin-bottom:14px}
+  .pv-fila{display:flex;gap:10px;padding:0 16px;margin-bottom:12px;position:relative}
+  .pv-boton{flex:1;border-radius:14px;padding:11px 4px;text-align:center;font-family:var(--fat);font-size:12px;position:relative}
+  .pv-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:0 16px;position:relative}
+  .pv-nivel{border-radius:13px;padding:13px 4px;text-align:center;font-family:var(--fat);font-size:13px}
+  .pv-pie{position:absolute;bottom:12px;left:0;right:0;display:flex;gap:8px;padding:0 16px}
+  .pv-mini{flex:1;border-radius:10px;padding:8px;text-align:center;font-size:9.5px;font-weight:800}
+</style>
+
+<div class="wrap">
+<h1>EDITOR DE PANTALLA DE INICIO</h1>
+<p class="sub">Elige un estilo, ajusta colores y mira el resultado al instante. EXPORTAR y me lo pegas en el chat.</p>
+
+<div class="cols">
+  <div class="panel">
+    <h2>1 · ESTILOS 2026</h2>
+    <div class="presets" id="presets"></div>
+    <h2>2 · AJUSTA A TU GUSTO</h2>
+    <div id="campos"></div>
+    <div class="campo"><label>Fondo animado (burbujas flotando)</label><input type="checkbox" id="anim" checked></div>
+    <button class="exportar" id="exportar">EXPORTAR MI DISENO</button>
+    <textarea id="salida" readonly></textarea>
+    <button class="copiar" id="copiar">COPIAR (pegalo en el chat de Claude)</button>
+  </div>
+
+  <div class="panel" style="max-width:340px">
+    <h2>VISTA PREVIA EN VIVO</h2>
+    <div class="telefono"><div class="pantalla" id="pv"></div></div>
+  </div>
+</div>
+</div>
+
+<script>
+const CAMPOS = [
+  ["fondo_arriba","Fondo (arriba)"], ["fondo_abajo","Fondo (abajo)"],
+  ["titulo","Titulo"], ["titulo_borde","Borde del titulo"], ["lema","Lema"],
+  ["acento","Boton principal / dorado"], ["boton","Botones normales"],
+  ["panel","Paneles"], ["gema","Gemas"], ["burbujas","Burbujas del fondo"],
+];
+
+const PRESETS = {
+  neon: { nombre:"NEON URBANO", nota:"tipo Subway Surfers",
+    fondo_arriba:"#251a4e", fondo_abajo:"#0b0f24", titulo:"#ffd764", titulo_borde:"#2b1a55",
+    lema:"#a9bdf0", acento:"#ffc23c", acento_texto:"#26160a", boton:"#2f3a6e", boton_texto:"#ffffff",
+    panel:"#1b2447", gema:"#c084ff", exito:"#58d65a", peligro:"#ef5a4a", burbujas:"#7a5cff" },
+  tropical: { nombre:"ISLA TROPICAL", nota:"alegre y soleado",
+    fondo_arriba:"#1e7ac2", fondo_abajo:"#0b3a66", titulo:"#ffe36b", titulo_borde:"#0d4a80",
+    lema:"#cfe9ff", acento:"#ffb545", acento_texto:"#33210a", boton:"#1c5a94", boton_texto:"#ffffff",
+    panel:"#124a7d", gema:"#8be0ff", exito:"#6fe07a", peligro:"#ff6a55", burbujas:"#5fd4f0" },
+  esports: { nombre:"ESPORTS OSCURO", nota:"serio y elegante",
+    fondo_arriba:"#101318", fondo_abajo:"#05060a", titulo:"#f2f4f8", titulo_borde:"#e63946",
+    lema:"#8a93a6", acento:"#e63946", acento_texto:"#ffffff", boton:"#1c2230", boton_texto:"#e8ecf4",
+    panel:"#141a26", gema:"#4dd0e1", exito:"#4caf6e", peligro:"#e63946", burbujas:"#233048" },
+  arcade: { nombre:"FUEGO ARCADE", nota:"energia pura",
+    fondo_arriba:"#5a1220", fondo_abajo:"#170409", titulo:"#ffcf3c", titulo_borde:"#5a1220",
+    lema:"#ffb9a0", acento:"#ff7a2a", acento_texto:"#331302", boton:"#7a2432", boton_texto:"#ffffff",
+    panel:"#4a1622", gema:"#ff9ecb", exito:"#7ada58", peligro:"#ff4a3c", burbujas:"#ff5a3c" },
+};
+
+let estado = { ...PRESETS.neon, preset:"neon", fondo_animado:true };
+const $ = s=>document.querySelector(s);
+
+const contP = $("#presets");
+for (const [clave,p] of Object.entries(PRESETS)) {
+  const b = document.createElement("button");
+  b.className = "preset" + (clave==="neon"?" on":"");
+  b.style.background = `linear-gradient(180deg,${p.fondo_arriba},${p.fondo_abajo})`;
+  b.innerHTML = `<span style="color:${p.titulo}">${p.nombre}</span><small style="color:${p.lema}">${p.nota}</small>`;
+  b.onclick = ()=>{
+    document.querySelectorAll(".preset").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");
+    estado = { ...PRESETS[clave], preset:clave, fondo_animado:$("#anim").checked };
+    pintarCampos(); pintar();
+  };
+  contP.appendChild(b);
+}
+
+function pintarCampos(){
+  const cont = $("#campos"); cont.innerHTML = "";
+  for (const [clave,nombre] of CAMPOS) {
+    const div = document.createElement("div"); div.className = "campo";
+    const lab = document.createElement("label"); lab.textContent = nombre;
+    const inp = document.createElement("input"); inp.type = "color"; inp.value = estado[clave];
+    inp.oninput = e=>{ estado[clave] = e.target.value; pintar(); };
+    div.append(lab, inp); cont.appendChild(div);
+  }
+}
+$("#anim").onchange = e=>{ estado.fondo_animado = e.target.checked; pintar(); };
+
+function pintar(){
+  const e = estado;
+  const pv = $("#pv");
+  pv.style.background = `linear-gradient(180deg,${e.fondo_arriba},${e.fondo_abajo})`;
+  let burbujas = "";
+  if (e.fondo_animado)
+    for (let i=0;i<7;i++){
+      const t = 14 + (i*37)%22, tam = 34 + (i*53)%110;
+      burbujas += `<div class="burbuja" style="width:${tam}px;height:${tam}px;left:${(i*47)%260}px;bottom:-${tam}px;background:${e.burbujas};opacity:.12;animation-duration:${t}s;animation-delay:-${i*3}s"></div>`;
+    }
+  const sombra = c=>`box-shadow:0 4px 0 rgba(0,0,0,.35)`;
+  const niveles = [1,2,3,4,5,6].map(n=>{
+    const abierto = n<5;
+    return `<div class="pv-nivel" style="background:${abierto?e.panel:"#00000055"};color:${abierto?"#fff":"#777f92"};${sombra()}">NIVEL ${n}${abierto?`<div style="color:${e.acento};font-size:11px;margin-top:3px">${"★".repeat(Math.max(0,4-n))||"☆"}</div>`:""}</div>`;
+  }).join("");
+  pv.innerHTML = `
+    ${burbujas}
+    <div style="display:flex;justify-content:space-between;padding:12px 14px 0;position:relative">
+      <span style="font-size:9px;font-weight:800;color:${e.exito}">EN LINEA</span>
+      <span style="font-family:var(--fat);font-size:13px;color:${e.gema}">◆ 240</span>
+    </div>
+    <div class="pv-titulo" style="color:${e.titulo};text-shadow:3px 3px 0 ${e.titulo_borde},-2px 2px 0 ${e.titulo_borde},2px -2px 0 ${e.titulo_borde}">ASEDIO<br>ROBOT</div>
+    <div class="pv-lema" style="color:${e.lema}">Robots atacan. Humanos defienden.</div>
+    <div class="pv-fila">
+      <div class="pv-boton" style="background:${e.acento};color:${e.acento_texto};${sombra()}">REGALO</div>
+      <div class="pv-boton" style="background:${e.boton};color:${e.boton_texto};${sombra()}">COFRES (2)</div>
+    </div>
+    <div class="pv-grid">${niveles}</div>
+    <div class="pv-pie">
+      <div class="pv-mini" style="background:${e.boton};color:${e.boton_texto}">COMO JUGAR</div>
+      <div class="pv-mini" style="background:${e.panel};color:${e.lema}">TERMINOS</div>
+    </div>`;
+}
+
+$("#exportar").onclick = ()=>{
+  const salida = { comentario:"Look de la interfaz. Generado por el editor de Tulio.",
+    preset: estado.preset, fondo_arriba: estado.fondo_arriba, fondo_abajo: estado.fondo_abajo,
+    titulo: estado.titulo, titulo_borde: estado.titulo_borde, lema: estado.lema,
+    acento: estado.acento, acento_texto: estado.acento_texto,
+    boton: estado.boton, boton_texto: estado.boton_texto, panel: estado.panel,
+    gema: estado.gema, exito: estado.exito, peligro: estado.peligro,
+    burbujas: estado.burbujas, fondo_animado: estado.fondo_animado };
+  const s = $("#salida"); s.style.display="block"; s.value = JSON.stringify(salida,null,1);
+  $("#copiar").style.display="block";
+};
+$("#copiar").onclick = async ()=>{
+  const s = $("#salida"); s.select();
+  try{ await navigator.clipboard.writeText(s.value); }catch{ document.execCommand("copy"); }
+  $("#copiar").textContent = "COPIADO — pegalo en el chat de Claude";
+};
+
+pintarCampos(); pintar();
+</script>

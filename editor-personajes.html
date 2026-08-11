@@ -1,0 +1,262 @@
+<meta charset="utf-8">
+<title>Editor de personajes — ASEDIO ROBOT</title>
+<style>
+  :root{--panel:#1b2a52;--panel2:#22335f;--line:rgba(255,255,255,.12);--gold:#ffc23c;--muted:#9db0da;
+    --sans:system-ui,"Segoe UI",Roboto,Arial,sans-serif;--fat:"Arial Black",var(--sans)}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:var(--sans);background:linear-gradient(180deg,#182749,#0c1224);color:#fff;
+    min-height:100vh;padding:14px 10px 60px}
+  .wrap{max-width:980px;margin:0 auto}
+  h1{font-family:var(--fat);font-size:19px;text-align:center;color:var(--gold);letter-spacing:1px;margin:4px 0 2px}
+  .sub{text-align:center;color:var(--muted);font-size:12.5px;margin:0 0 12px}
+  .tabs{display:flex;gap:8px;justify-content:center;margin-bottom:14px}
+  .tab{border:2px solid var(--line);background:var(--panel2);color:#cdd8ff;border-radius:999px;padding:9px 22px;
+    font-family:var(--fat);font-size:13px;cursor:pointer}
+  .tab.on{border-color:var(--gold);color:var(--gold)}
+  .cols{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;flex:1;min-width:290px;max-width:420px}
+  .panel h2{font-family:var(--fat);font-size:12.5px;margin:0 0 9px;color:#cdd8ff;letter-spacing:.5px}
+
+  .fichas{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+  .ficha{border:2px solid transparent;border-radius:11px;padding:7px 3px;cursor:pointer;text-align:center;
+    background:var(--panel2);font-size:10.5px;font-weight:800;color:#cdd8ff;line-height:1.2}
+  .ficha.on{border-color:var(--gold);color:var(--gold)}
+
+  .campo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .campo label{font-size:12.5px;color:var(--muted);font-weight:700;flex:1}
+  .campo select{background:var(--panel2);color:#fff;border:1px solid var(--line);border-radius:9px;
+    padding:7px 9px;font-size:12.5px;font-weight:600;min-width:120px}
+  .campo input[type=color]{width:52px;height:34px;border:1px solid var(--line);border-radius:8px;background:none;padding:2px;cursor:pointer}
+  .campo input[type=range]{flex:1;accent-color:var(--gold);max-width:150px}
+  .val{font-family:var(--fat);font-size:12px;color:var(--gold);min-width:34px;text-align:right}
+
+  .escenario{background:linear-gradient(180deg,#2b3f78,#16233f);border-radius:14px;padding:8px;text-align:center}
+  .nombrep{font-family:var(--fat);font-size:14px;color:var(--gold);margin:6px 0 0}
+  .rolp{font-size:11px;color:var(--muted);margin:2px 0 6px}
+
+  .exportar{width:100%;border:none;border-radius:14px;padding:14px;font-family:var(--fat);font-size:14px;
+    background:linear-gradient(180deg,#ffe08a,#f3a81f);color:#26160a;cursor:pointer;box-shadow:0 5px 0 #b9760d;margin-top:8px}
+  .exportar:active{transform:translateY(3px);box-shadow:0 2px 0 #b9760d}
+  #salida{width:100%;height:120px;background:#0a0f1f;color:#9fe6bd;border:1px solid var(--line);border-radius:10px;
+    font-family:Consolas,monospace;font-size:10.5px;margin-top:8px;padding:8px;display:none;white-space:pre;overflow:auto}
+  .copiar{display:none;width:100%;margin-top:6px;border:none;border-radius:11px;padding:11px;font-weight:800;
+    font-size:13px;background:#28b6a6;color:#04302b;cursor:pointer}
+  .nota{font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px}
+</style>
+
+<div class="wrap">
+<h1>EDITOR DE PERSONAJES</h1>
+<p class="sub">Diseña los robots enemigos y los humanos que defienden. Al final EXPORTAR y me lo pegas en el chat.</p>
+
+<div class="tabs">
+  <button class="tab on" data-modo="robots">ROBOTS</button>
+  <button class="tab" data-modo="humanos">HUMANOS</button>
+</div>
+
+<div class="cols">
+  <div class="panel">
+    <h2 id="tituloFichas">ELIGE A QUIEN DISENAR</h2>
+    <div class="fichas" id="fichas"></div>
+    <h2>SU ASPECTO</h2>
+    <div id="campos"></div>
+    <button class="exportar" id="exportar">EXPORTAR TODOS</button>
+    <textarea id="salida" readonly></textarea>
+    <button class="copiar" id="copiar">COPIAR (pegalo en el chat de Claude)</button>
+    <p class="nota">Exporta TODOS los personajes de la pestana actual, no solo el que estas viendo. Los cambios se guardan solos mientras trabajas.</p>
+  </div>
+
+  <div class="panel" style="max-width:330px">
+    <h2>ASI SE VERA EN EL JUEGO</h2>
+    <div class="escenario">
+      <svg id="pv" viewBox="0 0 200 210" style="width:100%;height:290px"></svg>
+      <div class="nombrep" id="pvNombre"></div>
+      <div class="rolp" id="pvRol"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const ROBOTS = [
+ {id:"scout",nombre:"Explorador",rol:"rapido y fragil",aspecto:{cuerpo:"capsula",cabeza:"antena",ojos:2,adorno:"ninguno",color:"#A8B0B8",detalle:"#3EC8F0",altura:0.55,ancho:0.5}},
+ {id:"grunt",nombre:"Soldado",rol:"el basico",aspecto:{cuerpo:"caja",cabeza:"visor",ojos:1,adorno:"ninguno",color:"#6F8F3F",detalle:"#C9D96B",altura:0.7,ancho:0.65}},
+ {id:"shield",nombre:"Escudado",rol:"aguanta balas",aspecto:{cuerpo:"caja",cabeza:"visor",ojos:2,adorno:"escudo",color:"#4A6FA5",detalle:"#9FC4F0",altura:0.75,ancho:0.75}},
+ {id:"swarm",nombre:"Enjambre",rol:"vienen en monton",aspecto:{cuerpo:"esfera",cabeza:"ninguna",ojos:1,adorno:"ninguno",color:"#C9A23B",detalle:"#FFE08A",altura:0.35,ancho:0.35}},
+ {id:"tank",nombre:"Tanque",rol:"lento y durisimo",aspecto:{cuerpo:"caja",cabeza:"cupula",ojos:2,adorno:"orugas",color:"#55524C",detalle:"#8A867E",altura:0.95,ancho:1.05}},
+ {id:"healer",nombre:"Curador",rol:"repara a los otros",aspecto:{cuerpo:"capsula",cabeza:"cupula",ojos:2,adorno:"cruz",color:"#4FBF9F",detalle:"#EAFFF8",altura:0.68,ancho:0.6}},
+ {id:"stealth",nombre:"Sigiloso",rol:"invisible sin radar",aspecto:{cuerpo:"capsula",cabeza:"visor",ojos:2,adorno:"ninguno",color:"#8E7BD9",detalle:"#D8C8FF",altura:0.62,ancho:0.5}},
+ {id:"boss",nombre:"COLOSO",rol:"el jefe final",aspecto:{cuerpo:"caja",cabeza:"cupula",ojos:3,adorno:"picos",color:"#B8443C",detalle:"#FF9A6B",altura:1.5,ancho:1.4}},
+];
+const HUMANOS = [
+ {id:"comandante",canon:"",nombre:"Comandante",rol:"vive en tu base",aspecto:{cuerpo:"uniforme",casco:"boina",piel:"#C9906B",ropa:"#2F5FA8",detalle:"#FFC23C",altura:0.85,ancho:0.42,arma:"ninguna",mochila:false}},
+ {id:"op_mg",canon:"mg",nombre:"Artillero",rol:"opera la ametralladora",aspecto:{cuerpo:"uniforme",casco:"casco",piel:"#C9906B",ropa:"#5A8FD9",detalle:"#2F5FA8",altura:0.7,ancho:0.38,arma:"fusil",mochila:false}},
+ {id:"op_cannon",canon:"cannon",nombre:"Bombardero",rol:"opera el canon pesado",aspecto:{cuerpo:"uniforme",casco:"casco",piel:"#8A5E3C",ropa:"#2F5FA8",detalle:"#1B4A80",altura:0.72,ancho:0.44,arma:"ninguna",mochila:true}},
+ {id:"op_laser",canon:"laser",nombre:"Tecnica",rol:"opera el laser",aspecto:{cuerpo:"bata",casco:"gafas",piel:"#E0B48C",ropa:"#E85D3A",detalle:"#FFD764",altura:0.7,ancho:0.36,arma:"tablet",mochila:false}},
+ {id:"op_frost",canon:"frost",nombre:"Criogenista",rol:"opera el criogenico",aspecto:{cuerpo:"abrigo",casco:"gorro",piel:"#C9906B",ropa:"#7FDDF0",detalle:"#EAF6FF",altura:0.68,ancho:0.42,arma:"ninguna",mochila:true}},
+ {id:"op_sniper",canon:"sniper",nombre:"Tiradora",rol:"opera el francotirador",aspecto:{cuerpo:"uniforme",casco:"gorra",piel:"#8A5E3C",ropa:"#3E5C38",detalle:"#6F8F3F",altura:0.72,ancho:0.34,arma:"fusil",mochila:false}},
+ {id:"op_radar",canon:"radar",nombre:"Op. de radar",rol:"opera el radar",aspecto:{cuerpo:"uniforme",casco:"audifonos",piel:"#E0B48C",ropa:"#D9C55A",detalle:"#8A7A2A",altura:0.7,ancho:0.38,arma:"tablet",mochila:false}},
+];
+
+const CAMPOS_ROBOT = [
+  ["cuerpo","Forma del cuerpo",["capsula","caja","esfera"]],
+  ["cabeza","Cabeza",["ninguna","antena","visor","cupula"]],
+  ["ojos","Cuantos ojos",[1,2,3]],
+  ["adorno","Adorno",["ninguno","escudo","orugas","cruz","picos"]],
+];
+const CAMPOS_HUMANO = [
+  ["cuerpo","Vestimenta",["uniforme","bata","abrigo"]],
+  ["casco","En la cabeza",["ninguno","casco","boina","gorra","gorro","gafas","audifonos"]],
+  ["arma","Lleva en la mano",["ninguna","fusil","tablet"]],
+];
+
+let modo = "robots", sel = 0;
+const $ = s=>document.querySelector(s);
+const lista = ()=> modo==="robots" ? ROBOTS : HUMANOS;
+const actual = ()=> lista()[sel];
+
+document.querySelectorAll(".tab").forEach(t=>{
+  t.onclick = ()=>{ document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+    t.classList.add("on"); modo = t.dataset.modo; sel = 0; $("#salida").style.display="none";
+    $("#copiar").style.display="none"; pintarFichas(); pintarCampos(); dibujar(); };
+});
+
+function pintarFichas(){
+  const c = $("#fichas"); c.innerHTML="";
+  lista().forEach((p,i)=>{
+    const b = document.createElement("button");
+    b.className = "ficha"+(i===sel?" on":"");
+    b.textContent = p.nombre;
+    b.onclick = ()=>{ sel=i; pintarFichas(); pintarCampos(); dibujar(); };
+    c.appendChild(b);
+  });
+}
+
+function pintarCampos(){
+  const cont = $("#campos"); cont.innerHTML="";
+  const p = actual(), a = p.aspecto;
+  const campos = modo==="robots" ? CAMPOS_ROBOT : CAMPOS_HUMANO;
+
+  for (const [clave,nombre,opciones] of campos){
+    const div = document.createElement("div"); div.className="campo";
+    div.innerHTML = `<label>${nombre}</label>`;
+    const sl = document.createElement("select");
+    opciones.forEach(o=>{ const op=document.createElement("option"); op.value=o; op.textContent=o;
+      if(String(a[clave])===String(o)) op.selected=true; sl.appendChild(op); });
+    sl.onchange = e=>{ a[clave] = clave==="ojos" ? parseInt(e.target.value) : e.target.value; dibujar(); };
+    div.appendChild(sl); cont.appendChild(div);
+  }
+
+  if (modo==="humanos"){
+    const div = document.createElement("div"); div.className="campo";
+    div.innerHTML = `<label>Mochila en la espalda</label>`;
+    const chk = document.createElement("input"); chk.type="checkbox"; chk.checked=!!a.mochila;
+    chk.style.width="22px"; chk.style.height="22px"; chk.style.accentColor="#ffc23c";
+    chk.onchange = e=>{ a.mochila = e.target.checked; dibujar(); };
+    div.appendChild(chk); cont.appendChild(div);
+  }
+
+  const colores = modo==="robots" ? [["color","Color principal"],["detalle","Color de detalles"]]
+    : [["piel","Piel"],["ropa","Ropa"],["detalle","Casco y equipo"]];
+  for (const [clave,nombre] of colores){
+    const div = document.createElement("div"); div.className="campo";
+    div.innerHTML = `<label>${nombre}</label>`;
+    const inp = document.createElement("input"); inp.type="color"; inp.value=a[clave];
+    inp.oninput = e=>{ a[clave]=e.target.value; dibujar(); };
+    div.appendChild(inp); cont.appendChild(div);
+  }
+
+  for (const [clave,nombre,min,max] of [["altura","Alto",0.3,1.6],["ancho","Ancho",0.3,1.5]]){
+    const div = document.createElement("div"); div.className="campo";
+    div.innerHTML = `<label>${nombre}</label>`;
+    const r = document.createElement("input"); r.type="range"; r.min=min; r.max=max; r.step=0.01; r.value=a[clave];
+    const v = document.createElement("span"); v.className="val"; v.textContent=Number(a[clave]).toFixed(2);
+    r.oninput = e=>{ a[clave]=parseFloat(e.target.value); v.textContent=Number(a[clave]).toFixed(2); dibujar(); };
+    div.append(r,v); cont.appendChild(div);
+  }
+}
+
+function dibujar(){
+  const p = actual(), a = p.aspecto;
+  $("#pvNombre").textContent = p.nombre;
+  $("#pvRol").textContent = p.rol;
+  const svg = $("#pv");
+  const suelo = 180, esc = 88;          // 1.0 de alto = 88px
+  const alto = a.altura*esc, ancho = a.ancho*esc;
+  const cx = 100;
+  let s = `<ellipse cx="${cx}" cy="${suelo+5}" rx="${ancho*0.75}" ry="7" fill="#000" opacity=".22"/>`;
+
+  if (modo==="robots"){
+    const yTop = suelo-alto;
+    // patas
+    if (a.cuerpo!=="esfera")
+      s += `<rect x="${cx-ancho*0.42}" y="${suelo-9}" width="${ancho*0.24}" height="10" fill="${a.detalle}"/>
+            <rect x="${cx+ancho*0.18}" y="${suelo-9}" width="${ancho*0.24}" height="10" fill="${a.detalle}"/>`;
+    // cuerpo
+    if (a.cuerpo==="esfera") s += `<circle cx="${cx}" cy="${suelo-alto/2}" r="${alto/2}" fill="${a.color}"/>`;
+    else if (a.cuerpo==="caja") s += `<rect x="${cx-ancho/2}" y="${yTop}" width="${ancho}" height="${alto}" rx="${ancho*0.12}" fill="${a.color}"/>`;
+    else s += `<rect x="${cx-ancho/2}" y="${yTop}" width="${ancho}" height="${alto}" rx="${ancho/2}" fill="${a.color}"/>`;
+    // adorno
+    if (a.adorno==="escudo") s += `<rect x="${cx-ancho*0.62}" y="${suelo-alto*0.9}" width="${ancho*1.24}" height="${alto*0.8}" rx="6" fill="${a.detalle}" opacity=".85"/>`;
+    if (a.adorno==="orugas") s += `<rect x="${cx-ancho*0.72}" y="${suelo-alto*0.35}" width="${ancho*0.2}" height="${alto*0.35}" fill="${a.detalle}"/><rect x="${cx+ancho*0.52}" y="${suelo-alto*0.35}" width="${ancho*0.2}" height="${alto*0.35}" fill="${a.detalle}"/>`;
+    if (a.adorno==="picos") for(let i=-1;i<=1;i++) s += `<rect x="${cx+i*ancho*0.34-6}" y="${yTop-12}" width="12" height="12" fill="${a.detalle}" transform="rotate(45 ${cx+i*ancho*0.34} ${yTop-6})"/>`;
+    if (a.adorno==="cruz") s += `<rect x="${cx-11}" y="${yTop-20}" width="22" height="6" fill="${a.detalle}"/><rect x="${cx-3}" y="${yTop-28}" width="6" height="22" fill="${a.detalle}"/>`;
+    // cabeza
+    if (a.cabeza==="visor") s += `<rect x="${cx-ancho*0.4}" y="${suelo-alto*0.78}" width="${ancho*0.8}" height="${alto*0.14}" rx="3" fill="${a.detalle}"/>`;
+    if (a.cabeza==="cupula") s += `<circle cx="${cx}" cy="${yTop}" r="${ancho*0.32}" fill="${a.detalle}"/>`;
+    if (a.cabeza==="antena") s += `<rect x="${cx-2}" y="${yTop-16}" width="4" height="16" fill="${a.detalle}"/><circle cx="${cx}" cy="${yTop-19}" r="5" fill="#ff5a4a"/>`;
+    // ojos
+    const n = a.ojos;
+    for(let i=0;i<n;i++){
+      const sep = n===1 ? 0 : (i-(n-1)/2)*ancho*0.3;
+      s += `<circle cx="${cx+sep}" cy="${suelo-alto*0.62}" r="${Math.max(3,ancho*0.09)}" fill="#ff5a4a"/>`;
+    }
+  } else {
+    const yTop = suelo-alto, anchoT = a.cuerpo==="abrigo" ? ancho*1.15 : ancho;
+    // piernas
+    s += `<rect x="${cx-ancho*0.36}" y="${suelo-alto*0.34}" width="${ancho*0.3}" height="${alto*0.34}" fill="${a.detalle}"/>
+          <rect x="${cx+ancho*0.06}" y="${suelo-alto*0.34}" width="${ancho*0.3}" height="${alto*0.34}" fill="${a.detalle}"/>`;
+    // brazos
+    s += `<rect x="${cx-anchoT*0.72}" y="${suelo-alto*0.74}" width="${ancho*0.22}" height="${alto*0.36}" rx="4" fill="${a.ropa}"/>
+          <rect x="${cx+anchoT*0.5}" y="${suelo-alto*0.74}" width="${ancho*0.22}" height="${alto*0.36}" rx="4" fill="${a.ropa}"/>`;
+    // torso
+    s += `<rect x="${cx-anchoT/2}" y="${suelo-alto*0.76}" width="${anchoT}" height="${alto*0.42}" rx="5" fill="${a.ropa}"/>`;
+    if (a.cuerpo==="bata") s += `<rect x="${cx-anchoT*0.45}" y="${suelo-alto*0.5}" width="${anchoT*0.9}" height="${alto*0.22}" fill="${a.detalle}" opacity=".9"/>`;
+    if (a.mochila) s += `<rect x="${cx-anchoT*0.34}" y="${suelo-alto*0.74}" width="${anchoT*0.68}" height="${alto*0.3}" rx="4" fill="${a.detalle}" opacity=".8"/>`;
+    // cabeza
+    const rc = ancho*0.31, yc = suelo-alto*0.86;
+    s += `<circle cx="${cx}" cy="${yc}" r="${rc}" fill="${a.piel}"/>`;
+    if (a.casco==="casco") s += `<path d="M${cx-rc*1.1} ${yc} a${rc*1.1} ${rc*1.1} 0 0 1 ${rc*2.2} 0 z" fill="${a.detalle}"/>`;
+    if (a.casco==="boina") s += `<ellipse cx="${cx+3}" cy="${yc-rc*0.75}" rx="${rc*1.15}" ry="${rc*0.34}" fill="${a.detalle}"/>`;
+    if (a.casco==="gorra") s += `<path d="M${cx-rc} ${yc-rc*0.4} a${rc} ${rc} 0 0 1 ${rc*2} 0 z" fill="${a.detalle}"/><rect x="${cx-rc*0.4}" y="${yc-rc*0.5}" width="${rc*1.6}" height="4" fill="${a.detalle}"/>`;
+    if (a.casco==="gorro") s += `<path d="M${cx-rc*1.05} ${yc-rc*0.2} a${rc*1.05} ${rc*1.05} 0 0 1 ${rc*2.1} 0 z" fill="${a.detalle}"/><circle cx="${cx}" cy="${yc-rc*1.25}" r="${rc*0.3}" fill="${a.detalle}"/>`;
+    if (a.casco==="gafas") s += `<rect x="${cx-rc*0.95}" y="${yc-rc*0.35}" width="${rc*1.9}" height="${rc*0.42}" rx="2" fill="${a.detalle}"/>`;
+    if (a.casco==="audifonos") s += `<circle cx="${cx-rc}" cy="${yc}" r="${rc*0.35}" fill="${a.detalle}"/><circle cx="${cx+rc}" cy="${yc}" r="${rc*0.35}" fill="${a.detalle}"/><path d="M${cx-rc} ${yc-rc*0.3} q${rc} ${-rc*1.1} ${rc*2} 0" stroke="${a.detalle}" stroke-width="3" fill="none"/>`;
+    // ojos
+    s += `<circle cx="${cx-rc*0.35}" cy="${yc+rc*0.1}" r="2.2" fill="#2b2b2b"/><circle cx="${cx+rc*0.35}" cy="${yc+rc*0.1}" r="2.2" fill="#2b2b2b"/>`;
+    // arma
+    if (a.arma==="fusil") s += `<rect x="${cx+anchoT*0.42}" y="${suelo-alto*0.86}" width="5" height="${alto*0.55}" rx="2" fill="${a.detalle}" transform="rotate(14 ${cx+anchoT*0.45} ${suelo-alto*0.6})"/>`;
+    if (a.arma==="tablet") s += `<rect x="${cx+anchoT*0.4}" y="${suelo-alto*0.6}" width="${ancho*0.42}" height="${ancho*0.3}" rx="2" fill="${a.detalle}" transform="rotate(-18 ${cx+anchoT*0.5} ${suelo-alto*0.55})"/>`;
+  }
+  svg.innerHTML = s;
+}
+
+$("#exportar").onclick = ()=>{
+  let salida;
+  if (modo==="robots")
+    salida = { tipo:"aspectos_robots",
+      robots: ROBOTS.map(r=>({ id:r.id, aspecto:r.aspecto })) };
+  else
+    salida = { tipo:"humanos",
+      comandante: (()=>{ const c=HUMANOS[0]; return {id:c.id,nombre:c.nombre,aspecto:c.aspecto}; })(),
+      operadores: HUMANOS.slice(1).map(h=>({id:h.id,canon:h.canon,nombre:h.nombre,aspecto:h.aspecto})) };
+  const s = $("#salida"); s.style.display="block"; s.value = JSON.stringify(salida,null,1);
+  $("#copiar").style.display="block";
+};
+$("#copiar").onclick = async ()=>{
+  const s = $("#salida"); s.select();
+  try{ await navigator.clipboard.writeText(s.value); }catch{ document.execCommand("copy"); }
+  $("#copiar").textContent = "COPIADO — pegalo en el chat de Claude";
+};
+
+pintarFichas(); pintarCampos(); dibujar();
+</script>

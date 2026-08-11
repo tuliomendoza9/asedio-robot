@@ -1,0 +1,372 @@
+<meta charset="utf-8">
+<title>Editor de niveles — ASEDIO ROBOT</title>
+<style>
+  :root{--bg:#0e1730;--panel:#1b2a52;--panel2:#22335f;--line:rgba(255,255,255,.12);
+    --grass:#7ec850;--grass2:#6db63f;--path:#cdd2db;--build:#e9f7a0;--spawn:#b884ff;--base:#3f6fc7;
+    --gold:#ffc23c;--ink:#fff;--muted:#9db0da;--danger:#ef5a4a;
+    --sans:system-ui,"Segoe UI",Roboto,Arial,sans-serif;--fat:"Arial Black",var(--sans)}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:var(--sans);background:linear-gradient(180deg,#182749,#0c1224);color:var(--ink);
+    min-height:100vh;padding:14px 10px 60px}
+  .wrap{max-width:520px;margin:0 auto}
+  h1{font-family:var(--fat);font-size:19px;text-align:center;color:var(--gold);letter-spacing:1px;margin:4px 0 2px}
+  .sub{text-align:center;color:var(--muted);font-size:12.5px;margin:0 0 14px}
+  .paso{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:14px}
+  .paso h2{font-family:var(--fat);font-size:13px;margin:0 0 8px;color:#cdd8ff;letter-spacing:.5px}
+  .paso h2 .num{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;
+    background:var(--gold);color:#26160a;font-size:12px;margin-right:7px}
+  .hint{font-size:11.5px;color:var(--muted);margin:6px 0 8px;line-height:1.45}
+
+  .tools{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px}
+  .tool{border:2px solid transparent;border-radius:11px;padding:7px 11px;font-weight:800;font-size:12px;
+    cursor:pointer;color:#1c2540;background:#c7d0e8}
+  .tool[data-t="camino"]{background:var(--path)}
+  .tool[data-t="construible"]{background:var(--build)}
+  .tool[data-t="borrar"]{background:#f0a9a0}
+  .tool.on{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
+  .tool.undo{background:#8fa3d8}
+
+  #tablero{display:grid;gap:3px;touch-action:none;user-select:none;margin:0 auto}
+  .celda{aspect-ratio:1;border-radius:6px;background:var(--grass);position:relative;cursor:pointer;
+    display:grid;place-items:center;font-size:10px;font-weight:800;color:#1c2540}
+  .celda.par{background:var(--grass2)}
+  .celda.camino{background:var(--path)}
+  .celda.construible{background:var(--build)}
+  .celda.spawn{background:var(--spawn);color:#fff}
+  .celda.base{background:var(--base);color:#fff}
+  .celda .ord{position:absolute;top:1px;left:3px;font-size:8px;color:#66707f;font-weight:700}
+
+  .filaops{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+  select,input[type=number],input[type=text]{background:var(--panel2);color:#fff;border:1px solid var(--line);
+    border-radius:9px;padding:7px 9px;font-size:13px;font-weight:600;width:auto}
+  input[type=number]{width:74px}
+  label{font-size:12px;color:var(--muted);font-weight:700}
+
+  .oleada{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:9px;margin-bottom:9px}
+  .oleada .cab{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+  .oleada .cab b{font-family:var(--fat);font-size:12px;color:var(--gold)}
+  .grupo{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+  .cnt{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .cnt button{width:32px;height:32px;border:none;background:#31447d;color:#fff;font-size:17px;font-weight:800;cursor:pointer}
+  .cnt span{min-width:34px;text-align:center;font-weight:800;font-size:14px}
+  .mini{border:none;border-radius:9px;padding:7px 10px;font-weight:800;font-size:11.5px;cursor:pointer;
+    background:#31447d;color:#dbe4ff}
+  .mini.del{background:#5c2a2a;color:#ffb9b0}
+  .add{width:100%;border:2px dashed var(--line);background:transparent;color:var(--muted);border-radius:11px;
+    padding:9px;font-weight:800;font-size:12.5px;cursor:pointer;margin-top:2px}
+
+  .canones{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{border:2px solid var(--line);background:var(--panel2);color:#cdd8ff;border-radius:999px;
+    padding:6px 12px;font-weight:800;font-size:12px;cursor:pointer}
+  .chip.on{border-color:var(--gold);color:var(--gold)}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+  .stat{background:var(--panel2);border-radius:10px;padding:7px 9px}
+  .stat .k{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.4px}
+  .stat .v{font-family:var(--fat);font-size:15px;margin-top:2px}
+  .aviso{border-radius:10px;padding:8px 10px;font-size:12px;font-weight:700;margin-top:8px;display:none}
+  .aviso.mal{display:block;background:#4a1d1d;color:#ffb9b0}
+  .aviso.bien{display:block;background:#1d4a2a;color:#a9f0bd}
+
+  .exportar{width:100%;border:none;border-radius:14px;padding:14px;font-family:var(--fat);font-size:15px;
+    letter-spacing:.5px;background:linear-gradient(180deg,#ffe08a,#f3a81f);color:#26160a;cursor:pointer;
+    box-shadow:0 5px 0 #b9760d}
+  .exportar:active{transform:translateY(3px);box-shadow:0 2px 0 #b9760d}
+  #salida{width:100%;height:130px;background:#0a0f1f;color:#9fe6bd;border:1px solid var(--line);border-radius:10px;
+    font-family:Consolas,monospace;font-size:10.5px;margin-top:9px;padding:8px;display:none;white-space:pre;overflow:auto}
+  .copiar{display:none;width:100%;margin-top:7px;border:none;border-radius:11px;padding:11px;font-weight:800;
+    font-size:13px;background:#28b6a6;color:#04302b;cursor:pointer}
+</style>
+
+<div class="wrap">
+<h1>EDITOR DE NIVELES</h1>
+<p class="sub">Diseña tu nivel pintando. Al final tocas EXPORTAR y me pegas el resultado en el chat.</p>
+
+<div class="paso">
+  <h2><span class="num">1</span>DIBUJA EL CAMINO</h2>
+  <p class="hint">Elige la herramienta <b>CAMINO</b> y toca casilla por casilla desde donde nacen los robots hasta la base (una al lado de la otra, como una serpiente). La primera se marca E (entrada) y la última B (base). Luego con <b>TORRES</b> pinta dónde se podrá construir.</p>
+  <div class="tools">
+    <button class="tool on" data-t="camino">CAMINO</button>
+    <button class="tool" data-t="construible">TORRES</button>
+    <button class="tool" data-t="decorar" style="background:#c9b3f0">DECORAR</button>
+    <button class="tool" data-t="borrar">BORRAR</button>
+    <button class="tool undo" id="deshacer">DESHACER</button>
+  </div>
+  <div id="tablero"></div>
+  <div class="filaops">
+    <label>Mundo</label>
+    <select id="tema">
+      <option value="pradera">Pradera</option><option value="desierto">Desierto</option>
+      <option value="nieve">Nieve</option><option value="ciudad">Ciudad</option>
+      <option value="volcan">Volcan</option>
+    </select>
+    <label>Adorno</label>
+    <select id="tipoDecor">
+      <option>montana</option><option>arbol</option><option>roca</option><option>edificio</option>
+      <option>muro</option><option>cristal</option><option>portal</option><option>puente</option><option>ruina</option>
+    </select>
+  </div>
+  <div class="filaops">
+    <label>Filas del mapa</label>
+    <select id="filas"><option>10</option><option>11</option><option selected>12</option><option>13</option><option>14</option></select>
+    <span class="hint" style="margin:0">(cambiarlas borra el dibujo)</span>
+  </div>
+</div>
+
+<div class="paso">
+  <h2><span class="num">2</span>ARMA LAS OLEADAS</h2>
+  <p class="hint">Cada oleada es un grupo de robots que ataca junto. "Pausa" = segundos de respiro antes de esa oleada. "Cada" = segundos entre robot y robot.</p>
+  <div id="oleadas"></div>
+  <button class="add" id="addOleada">+ AGREGAR OLEADA</button>
+</div>
+
+<div class="paso">
+  <h2><span class="num">3</span>REGLAS DEL NIVEL</h2>
+  <div class="filaops">
+    <label>Nombre</label><input type="text" id="nombre" placeholder="La Playita Mortal" style="flex:1;min-width:150px">
+  </div>
+  <div class="filaops">
+    <label>Monedas inicio</label><input type="number" id="monedas" value="150" min="50" step="5">
+    <label>Cartas camino</label><input type="number" id="cartas" value="0" min="0" max="4">
+  </div>
+  <p class="hint">Cañones permitidos en este nivel:</p>
+  <div class="canones" id="canones"></div>
+  <div class="stats">
+    <div class="stat"><div class="k">LARGO DEL CAMINO</div><div class="v" id="stLargo">0 casillas</div></div>
+    <div class="stat"><div class="k">CELDAS DE TORRE</div><div class="v" id="stTorres">0</div></div>
+    <div class="stat"><div class="k">DANO TOTAL ROBOTS</div><div class="v" id="stDano">0</div></div>
+    <div class="stat"><div class="k">VIDA DE BASE (auto)</div><div class="v" id="stVida">0</div></div>
+  </div>
+  <div class="aviso" id="aviso"></div>
+</div>
+
+<button class="exportar" id="exportar">EXPORTAR MI NIVEL</button>
+<textarea id="salida" readonly></textarea>
+<button class="copiar" id="copiar">COPIAR (luego pégalo en el chat de Claude)</button>
+</div>
+
+<script>
+const COLS = 9;
+const ROBOTS = [
+  {id:"scout",  nombre:"Explorador", dano:10},
+  {id:"grunt",  nombre:"Soldado",    dano:25},
+  {id:"shield", nombre:"Escudado",   dano:40},
+  {id:"swarm",  nombre:"Enjambre",   dano:5},
+  {id:"tank",   nombre:"Tanque",     dano:100},
+  {id:"healer", nombre:"Curador",    dano:15},
+  {id:"stealth",nombre:"Sigiloso",   dano:30},
+  {id:"boss",   nombre:"COLOSO (jefe)", dano:1000},
+];
+const CANONES = [["mg","Ametralladora"],["cannon","Cañón pesado"],["frost","Criogénico"],["laser","Láser"],["sniper","Francotirador"],["radar","Radar"]];
+
+let filas = 12;
+let camino = [];            // [{c,f}] en orden
+let construibles = new Set(); // "c,f"
+let decoraciones = new Map(); // "c,f" -> tipo
+let herramienta = "camino";
+let oleadas = [];
+const EMOJI_DECOR = {montana:"M",arbol:"A",roca:"R",edificio:"E",muro:"#",cristal:"C",portal:"P",puente:"=",ruina:"~"};
+
+const $ = s => document.querySelector(s);
+const tablero = $("#tablero");
+
+function clave(c,f){ return c+","+f; }
+function enCamino(c,f){ return camino.some(p=>p.c===c&&p.f===f); }
+
+function pintar(){
+  tablero.style.gridTemplateColumns = `repeat(${COLS},1fr)`;
+  tablero.innerHTML = "";
+  for(let f=0; f<filas; f++) for(let c=0; c<COLS; c++){
+    const d = document.createElement("div");
+    d.className = "celda" + (((c+f)%2)?" par":"");
+    const idx = camino.findIndex(p=>p.c===c&&p.f===f);
+    if(idx===0){ d.classList.add("spawn"); d.textContent="E"; }
+    else if(idx===camino.length-1 && camino.length>1){ d.classList.add("base"); d.textContent="B"; }
+    else if(idx>0){ d.classList.add("camino"); d.innerHTML='<span class="ord">'+idx+'</span>'; }
+    else if(construibles.has(clave(c,f))){ d.classList.add("construible"); d.textContent="T"; }
+    else if(decoraciones.has(clave(c,f))){ d.style.background="#c9b3f0"; d.style.color="#3a2a66"; d.textContent=EMOJI_DECOR[decoraciones.get(clave(c,f))]||"?"; }
+    d.onpointerdown = () => tocar(c,f);
+    tablero.appendChild(d);
+  }
+  refrescarStats();
+}
+
+function tocar(c,f){
+  if(herramienta==="camino"){
+    if(enCamino(c,f)) return;
+    if(camino.length>0){
+      const u = camino[camino.length-1];
+      if(Math.abs(u.c-c)+Math.abs(u.f-f)!==1){ avisar("Cada casilla del camino debe ir PEGADA a la anterior.", true); return; }
+    }
+    construibles.delete(clave(c,f));
+    camino.push({c,f});
+  } else if(herramienta==="construible"){
+    if(enCamino(c,f)) return;
+    const k = clave(c,f);
+    decoraciones.delete(k);
+    construibles.has(k) ? construibles.delete(k) : construibles.add(k);
+  } else if(herramienta==="decorar"){
+    if(enCamino(c,f)) return;
+    const k = clave(c,f);
+    construibles.delete(k);
+    if(decoraciones.get(k)===document.querySelector("#tipoDecor").value) decoraciones.delete(k);
+    else decoraciones.set(k, document.querySelector("#tipoDecor").value);
+  } else {
+    const idx = camino.findIndex(p=>p.c===c&&p.f===f);
+    if(idx===camino.length-1) camino.pop();
+    else if(idx>=0){ avisar("El camino solo se borra desde la punta (o usa DESHACER).", true); return; }
+    construibles.delete(clave(c,f));
+    decoraciones.delete(clave(c,f));
+  }
+  avisar("",false); pintar();
+}
+
+document.querySelectorAll(".tool[data-t]").forEach(b=>{
+  b.onclick=()=>{ document.querySelectorAll(".tool[data-t]").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on"); herramienta=b.dataset.t; };
+});
+$("#deshacer").onclick=()=>{ camino.pop(); pintar(); };
+$("#filas").onchange=e=>{ filas=parseInt(e.target.value); camino=[]; construibles.clear(); decoraciones.clear(); pintar(); };
+
+function nuevaOleada(){
+  oleadas.push({espera:5, grupos:[{robot:"scout",cantidad:6,intervalo:1}]});
+  pintarOleadas();
+}
+function pintarOleadas(){
+  const cont = $("#oleadas"); cont.innerHTML="";
+  oleadas.forEach((o,i)=>{
+    const div = document.createElement("div"); div.className="oleada";
+    const cab = document.createElement("div"); cab.className="cab";
+    cab.innerHTML = `<b>OLEADA ${i+1}</b>`;
+    const del = document.createElement("button"); del.className="mini del"; del.textContent="QUITAR";
+    del.onclick=()=>{ oleadas.splice(i,1); pintarOleadas(); };
+    cab.appendChild(del); div.appendChild(cab);
+
+    const fe = document.createElement("div"); fe.className="grupo";
+    fe.innerHTML = `<label>Pausa antes</label>`;
+    const inpE = document.createElement("input"); inpE.type="number"; inpE.value=o.espera; inpE.min=2; inpE.step=.5;
+    inpE.onchange=e=>{ o.espera=parseFloat(e.target.value)||2; refrescarStats(); };
+    fe.appendChild(inpE); fe.insertAdjacentHTML("beforeend","<label>seg</label>");
+    div.appendChild(fe);
+
+    o.grupos.forEach((g,j)=>{
+      const fila = document.createElement("div"); fila.className="grupo";
+      const sel = document.createElement("select");
+      ROBOTS.forEach(r=>{ const op=document.createElement("option"); op.value=r.id; op.textContent=r.nombre;
+        if(r.id===g.robot) op.selected=true; sel.appendChild(op); });
+      sel.onchange=e=>{ g.robot=e.target.value; refrescarStats(); };
+      fila.appendChild(sel);
+
+      const cnt = document.createElement("div"); cnt.className="cnt";
+      const menos=document.createElement("button"); menos.textContent="−";
+      const num=document.createElement("span"); num.textContent=g.cantidad;
+      const mas=document.createElement("button"); mas.textContent="+";
+      menos.onclick=()=>{ g.cantidad=Math.max(1,g.cantidad-1); num.textContent=g.cantidad; refrescarStats(); };
+      mas.onclick=()=>{ g.cantidad++; num.textContent=g.cantidad; refrescarStats(); };
+      cnt.append(menos,num,mas); fila.appendChild(cnt);
+
+      fila.insertAdjacentHTML("beforeend","<label>cada</label>");
+      const inpI=document.createElement("input"); inpI.type="number"; inpI.value=g.intervalo; inpI.min=.2; inpI.step=.1;
+      inpI.onchange=e=>{ g.intervalo=parseFloat(e.target.value)||1; };
+      fila.appendChild(inpI);
+      fila.insertAdjacentHTML("beforeend","<label>s</label>");
+
+      const delG=document.createElement("button"); delG.className="mini del"; delG.textContent="X";
+      delG.onclick=()=>{ o.grupos.splice(j,1); if(!o.grupos.length) o.grupos.push({robot:"scout",cantidad:4,intervalo:1}); pintarOleadas(); };
+      fila.appendChild(delG);
+      div.appendChild(fila);
+    });
+
+    const addG=document.createElement("button"); addG.className="mini"; addG.textContent="+ ROBOT DISTINTO EN ESTA OLEADA";
+    addG.onclick=()=>{ o.grupos.push({robot:"grunt",cantidad:4,intervalo:1.2}); pintarOleadas(); };
+    div.appendChild(addG);
+    cont.appendChild(div);
+  });
+  refrescarStats();
+}
+$("#addOleada").onclick=nuevaOleada;
+
+const contC = $("#canones");
+CANONES.forEach(([id,nombre],i)=>{
+  const b=document.createElement("button"); b.className="chip"+(i<2?" on":""); b.textContent=nombre; b.dataset.id=id;
+  b.onclick=()=>b.classList.toggle("on");
+  contC.appendChild(b);
+});
+
+function danoTotal(){
+  let t=0;
+  for(const o of oleadas) for(const g of o.grupos)
+    t += g.cantidad * (ROBOTS.find(r=>r.id===g.robot)?.dano||0);
+  return t;
+}
+function refrescarStats(){
+  $("#stLargo").textContent = Math.max(0,camino.length-1)+" casillas";
+  $("#stTorres").textContent = construibles.size;
+  const d = danoTotal();
+  $("#stDano").textContent = d;
+  $("#stVida").textContent = Math.max(300, Math.round(d*0.5/50)*50);
+}
+
+function avisar(msj, mal){
+  const a=$("#aviso");
+  if(!msj){ a.className="aviso"; return; }
+  a.textContent=msj; a.className="aviso "+(mal?"mal":"bien");
+}
+
+function generarDesvios(n){
+  const en = new Set(camino.map(p=>clave(p.c,p.f)));
+  const usadas = new Set(); const res=[];
+  for(let i=0;i<camino.length-1 && res.length<n;i++){
+    const a=camino[i], b=camino[i+1];
+    const dc=b.c-a.c, df=b.f-a.f;
+    for(const [pc,pf] of [[df,dc],[-df,-dc]]){
+      const d1={c:a.c+pc,f:a.f+pf}, d2={c:b.c+pc,f:b.f+pf};
+      const ok=[d1,d2].every(d=>d.c>=0&&d.c<COLS&&d.f>=0&&d.f<filas&&!en.has(clave(d.c,d.f))&&!usadas.has(clave(d.c,d.f)));
+      if(ok){ res.push({desde:[a.c,a.f],hasta:[b.c,b.f],celdas:[[d1.c,d1.f],[d2.c,d2.f]]});
+        usadas.add(clave(d1.c,d1.f)); usadas.add(clave(d2.c,d2.f)); break; }
+    }
+  }
+  return res;
+}
+
+$("#exportar").onclick=()=>{
+  if(camino.length<4){ avisar("El camino necesita al menos 4 casillas (E hasta B).", true); return; }
+  if(construibles.size<4){ avisar("Marca al menos 4 casillas de TORRES (verde claro) o no habrá donde defenderse.", true); return; }
+  if(!oleadas.length){ avisar("Agrega al menos una oleada de robots.", true); return; }
+  const permitidos=[...document.querySelectorAll(".chip.on")].map(b=>b.dataset.id);
+  if(!permitidos.length){ avisar("Elige al menos un cañón permitido.", true); return; }
+  const cartas=parseInt($("#cartas").value)||0;
+  const nivel={
+    id:0,
+    nombre: $("#nombre").value||"Nivel de Tulio",
+    tema: $("#tema").value,
+    decoraciones: [...decoraciones].map(([k,tipo])=>({tipo, celda:k.split(",").map(Number), escala:1.0})),
+    descripcion:"Diseñado por Tulio en el editor",
+    monedas_iniciales: parseInt($("#monedas").value)||150,
+    vida_base: Math.max(300, Math.round(danoTotal()*0.5/50)*50),
+    canones_permitidos: permitidos,
+    cartas_camino: cartas,
+    desvios: cartas>0 ? generarDesvios(cartas+1) : [],
+    mapa:{
+      columnas:COLS, filas:filas,
+      spawn:[camino[0].c,camino[0].f],
+      base:[camino[camino.length-1].c,camino[camino.length-1].f],
+      camino:camino.map(p=>[p.c,p.f]),
+      construibles:[...construibles].map(k=>k.split(",").map(Number)),
+    },
+    oleadas: oleadas.map((o,i)=>({numero:i+1,espera_s:o.espera,
+      grupos:o.grupos.map(g=>({robot:g.robot,cantidad:g.cantidad,intervalo_s:g.intervalo}))})),
+  };
+  const s=$("#salida"); s.style.display="block"; s.value=JSON.stringify(nivel,null,1);
+  $("#copiar").style.display="block";
+  avisar("¡Nivel listo! Toca COPIAR y pégamelo en el chat diciéndome qué número de nivel quieres que sea.", false);
+};
+$("#copiar").onclick=async()=>{
+  const s=$("#salida"); s.select();
+  try{ await navigator.clipboard.writeText(s.value); avisar("Copiado. Pégalo en el chat de Claude.", false); }
+  catch{ document.execCommand("copy"); avisar("Copiado (método viejo). Pégalo en el chat.", false); }
+};
+
+nuevaOleada();
+pintar();
+</script>
