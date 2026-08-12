@@ -39,17 +39,17 @@
   <div id="estado">descargando...</div>
 </div>
 <canvas id="unity-canvas" tabindex="-1"></canvas>
-<script src="Build/WebGL_v12.loader.js"></script>
+<script src="Build/WebGL_v13.loader.js"></script>
 <script>
   createUnityInstance(document.querySelector("#unity-canvas"), {
     arguments: [],
-    dataUrl: "Build/WebGL_v12.data.unityweb",
-    frameworkUrl: "Build/WebGL_v12.framework.js.unityweb",
-    codeUrl: "Build/WebGL_v12.wasm.unityweb",
+    dataUrl: "Build/WebGL_v13.data.unityweb",
+    frameworkUrl: "Build/WebGL_v13.framework.js.unityweb",
+    codeUrl: "Build/WebGL_v13.wasm.unityweb",
     streamingAssetsUrl: "StreamingAssets",
     companyName: "Tulio Mendoza",
     productName: "ASEDIO ROBOT",
-    productVersion: "0.8.0",
+    productVersion: "0.9.0",
     devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
   }, function (progreso) {
     document.querySelector("#relleno").style.width = (progreso * 100) + "%";

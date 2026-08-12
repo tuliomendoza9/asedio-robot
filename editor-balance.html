@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASEDIO ROBOT — Editor de Balance</title>
+<style>
+  :root { --fondo:#0b1020; --panel:#161d33; --borde:#2a3352; --texto:#e8ecff;
+          --suave:#9fb4ff; --acento:#ffc93c; --peligro:#ff6b5a; --exito:#58d65a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--fondo); color:var(--texto);
+         font-family:Arial, Helvetica, sans-serif; padding:16px; }
+  h1 { color:var(--acento); font-size:26px; margin:6px 0 2px; }
+  .sub { color:var(--suave); font-size:14px; margin-bottom:18px; }
+  h2 { color:var(--suave); font-size:19px; border-bottom:2px solid var(--borde);
+       padding-bottom:6px; margin-top:28px; }
+  .tabla { width:100%; overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; min-width:640px; }
+  th { color:var(--suave); font-size:12px; text-align:left; padding:6px 8px;
+       border-bottom:1px solid var(--borde); white-space:nowrap; }
+  td { padding:5px 8px; border-bottom:1px solid #1d2440; }
+  td.nombre { font-weight:bold; white-space:nowrap; }
+  td.rol { color:var(--suave); font-size:12px; }
+  input[type=number] { width:76px; background:#0e1428; color:var(--texto);
+    border:1px solid var(--borde); border-radius:6px; padding:6px; font-size:15px; }
+  input[type=number]:focus { border-color:var(--acento); outline:none; }
+  .exportar { margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; }
+  button { background:var(--acento); color:#22242b; border:none; border-radius:8px;
+           padding:12px 18px; font-size:15px; font-weight:bold; cursor:pointer; }
+  button.gris { background:var(--panel); color:var(--texto); border:1px solid var(--borde); }
+  textarea { width:100%; height:150px; background:#0e1428; color:#bfe8bf;
+             border:1px solid var(--borde); border-radius:8px; margin-top:10px;
+             font-family:Consolas, monospace; font-size:12px; }
+  .aviso { background:var(--panel); border:1px solid var(--borde); border-radius:10px;
+           padding:12px 14px; font-size:14px; color:var(--suave); margin-top:10px; }
+  .ok { color:var(--exito); font-weight:bold; margin-left:8px; }
+</style>
+</head>
+<body>
+<h1>EDITOR DE BALANCE</h1>
+<div class="sub">Cambia los numeros, toca COPIAR y pega el resultado en el chat de Claude
+para que entre al juego. Los valores que ves son los que estan JUGANDO ahora.</div>
+
+<h2>ROBOTS (los que atacan)</h2>
+<div class="tabla"><table id="tablaRobots">
+<tr><th>Robot</th><th>Vida</th><th>Velocidad<br>(celdas/s)</th><th>Dano a<br>la base</th>
+<th>Monedas<br>al morir</th><th>Costo en<br>duelo (pts)</th><th>Rasgo</th></tr>
+</table></div>
+
+<h2>CANONES (los que defienden)</h2>
+<div class="tabla"><table id="tablaCanones">
+<tr><th>Canon</th><th>Dano</th><th>Alcance<br>(celdas)</th><th>Disparos<br>por seg</th>
+<th>Costo</th><th>Rol</th></tr>
+</table></div>
+
+<div class="aviso"><b>Guia rapida:</b> mas VIDA = robots mas duros de matar ·
+mas DANO de canon = mueren mas rapido · el LASER dispara continuo (su dano es POR SEGUNDO) ·
+si subes mucho las monedas al morir, el jugador se llena de plata y el juego se pone facil.</div>
+
+<div class="exportar">
+  <button onclick="exportar('robots')">COPIAR robots.json</button>
+  <button onclick="exportar('canones')">COPIAR cannons.json</button>
+  <button class="gris" onclick="location.reload()">Deshacer todo</button>
+  <span id="listo" class="ok"></span>
+</div>
+<textarea id="salida" placeholder="Aqui aparece el JSON para pegar en el chat..."></textarea>
+
+<script>
+// ====== DATOS ACTUALES DEL JUEGO (v0.8.x) ======
+const ROBOTS = {"comentario":"TODOS los robots del juego. Edita numeros y guarda. vida=puntos de golpe, velocidad=celdas por segundo, dano_a_base=lo que resta si llega a la base, recompensa=monedas al morir.","robots":[{"id":"scout","nombre":"Explorador","vida":30,"velocidad":1.6,"dano_a_base":10,"recompensa":3,"rasgo":"ninguno","descripcion":"Rapido y debil. Carne de canon.","aspecto":{"cuerpo":"capsula","cabeza":"antena","ojos":2,"adorno":"ninguno","color":"#A8B0B8","detalle":"#3EC8F0","altura":0.55,"ancho":0.5},"costo":4},{"id":"grunt","nombre":"Soldado","vida":80,"velocidad":1.0,"dano_a_base":25,"recompensa":6,"rasgo":"ninguno","descripcion":"El robot de asalto estandar.","aspecto":{"cuerpo":"caja","cabeza":"visor","ojos":1,"adorno":"ninguno","color":"#6F8F3F","detalle":"#C9D96B","altura":0.7,"ancho":0.65},"costo":8},{"id":"shield","nombre":"Escudado","vida":150,"velocidad":0.7,"dano_a_base":40,"recompensa":12,"rasgo":"escudo_fisico","rasgo_datos":{"reduccion_dano_fisico":0.5},"descripcion":"Su escudo bloquea la mitad del dano fisico. El laser lo ignora.","aspecto":{"cuerpo":"caja","cabeza":"visor","ojos":2,"adorno":"escudo","color":"#4A6FA5","detalle":"#9FC4F0","altura":0.75,"ancho":0.75},"costo":15},{"id":"swarm","nombre":"Enjambre","vida":15,"velocidad":2.0,"dano_a_base":5,"recompensa":2,"rasgo":"enjambre","rasgo_datos":{"tamano_grupo":6},"descripcion":"Debiles pero vienen de a seis.","aspecto":{"cuerpo":"esfera","cabeza":"ninguna","ojos":1,"adorno":"ninguno","color":"#C9A23B","detalle":"#FFE08A","altura":0.35,"ancho":0.35},"costo":2},{"id":"tank","nombre":"Tanque","vida":500,"velocidad":0.4,"dano_a_base":100,"recompensa":30,"rasgo":"inmune_hielo","descripcion":"Lento, durisimo e inmune a la ralentizacion.","aspecto":{"cuerpo":"caja","cabeza":"cupula","ojos":2,"adorno":"orugas","color":"#55524C","detalle":"#8A867E","altura":0.95,"ancho":1.05},"costo":40},{"id":"healer","nombre":"Reparador","vida":100,"velocidad":0.9,"dano_a_base":15,"recompensa":18,"rasgo":"curador","rasgo_datos":{"cura_por_segundo":10,"radio_celdas":1.5},"descripcion":"Repara a los robots cercanos. Matalo primero.","aspecto":{"cuerpo":"capsula","cabeza":"cupula","ojos":2,"adorno":"cruz","color":"#4FBF9F","detalle":"#EAFFF8","altura":0.68,"ancho":0.6},"costo":25},{"id":"stealth","nombre":"Sigiloso","vida":60,"velocidad":1.4,"dano_a_base":30,"recompensa":15,"rasgo":"invisible","descripcion":"Invisible salvo que un radar lo revele.","aspecto":{"cuerpo":"capsula","cabeza":"visor","ojos":2,"adorno":"ninguno","color":"#8E7BD9","detalle":"#D8C8FF","altura":0.62,"ancho":0.5},"costo":20},{"id":"boss","nombre":"Coloso","vida":3000,"velocidad":0.3,"dano_a_base":1000,"recompensa":200,"rasgo":"jefe","rasgo_datos":{"invoca_robot":"swarm","invoca_cantidad":2,"invoca_cada_s":10},"descripcion":"El jefe final. Invoca enjambres mientras avanza.","aspecto":{"cuerpo":"caja","cabeza":"cupula","ojos":3,"adorno":"picos","color":"#B8443C","detalle":"#FF9A6B","altura":1.5,"ancho":1.4},"costo":200}]};
+const CANONES = {"comentario":"TODOS los canones del juego. alcance en celdas. Los canones NO se compran duplicados: se colocan y se MEJORAN en sitio (ver economy.json). En el laser, dano = dano POR SEGUNDO porque dispara continuo.","canones":[{"id":"mg","nombre":"Ametralladora","dano":8,"alcance":2.3,"disparos_por_segundo":5,"tipo_dano":"fisico","costo":50,"rol":"Anti-enjambre"},{"id":"cannon","nombre":"Canon Pesado","dano":60,"alcance":3.1,"disparos_por_segundo":0.8,"tipo_dano":"explosivo","area_celdas":1.0,"costo":100,"rol":"Anti-grupo (dano en area)"},{"id":"laser","nombre":"Laser","dano":15,"alcance":3.9,"continuo":true,"tipo_dano":"energia","costo":120,"rol":"Anti-escudado (la energia ignora escudos)"},{"id":"frost","nombre":"Criogenico","dano":5,"alcance":2.8,"disparos_por_segundo":2,"tipo_dano":"hielo","ralentiza_pct":0.4,"ralentiza_s":2,"costo":80,"rol":"Control (frena a los robots, no al tanque)"},{"id":"sniper","nombre":"Francotirador","dano":200,"alcance":6.2,"disparos_por_segundo":0.3,"tipo_dano":"perforante","costo":150,"rol":"Anti-tanque"},{"id":"radar","nombre":"Torreta Radar","dano":20,"alcance":3.4,"disparos_por_segundo":2,"tipo_dano":"energia","revela_invisibles":true,"costo":100,"rol":"Anti-sigiloso (revela invisibles a las demas torres)"}]};
+
+function campo(obj, clave, paso) {
+  const i = document.createElement('input');
+  i.type = 'number'; i.step = paso || 1; i.value = obj[clave];
+  i.oninput = () => { const v = parseFloat(i.value); if (!isNaN(v)) obj[clave] = v; };
+  const td = document.createElement('td'); td.appendChild(i); return td;
+}
+function celda(texto, clase) {
+  const td = document.createElement('td'); td.textContent = texto;
+  if (clase) td.className = clase; return td;
+}
+
+const tR = document.getElementById('tablaRobots');
+for (const r of ROBOTS.robots) {
+  const fila = document.createElement('tr');
+  fila.appendChild(celda(r.nombre, 'nombre'));
+  fila.appendChild(campo(r, 'vida'));
+  fila.appendChild(campo(r, 'velocidad', 0.1));
+  fila.appendChild(campo(r, 'dano_a_base'));
+  fila.appendChild(campo(r, 'recompensa'));
+  fila.appendChild(campo(r, 'costo'));
+  fila.appendChild(celda(r.rasgo === 'ninguno' ? '—' : r.rasgo, 'rol'));
+  tR.appendChild(fila);
+}
+const tC = document.getElementById('tablaCanones');
+for (const c of CANONES.canones) {
+  const fila = document.createElement('tr');
+  fila.appendChild(celda(c.nombre, 'nombre'));
+  fila.appendChild(campo(c, 'dano'));
+  fila.appendChild(campo(c, 'alcance', 0.1));
+  if (c.continuo) fila.appendChild(celda('continuo', 'rol'));
+  else fila.appendChild(campo(c, 'disparos_por_segundo', 0.1));
+  fila.appendChild(campo(c, 'costo'));
+  fila.appendChild(celda(c.rol, 'rol'));
+  tC.appendChild(fila);
+}
+
+function exportar(cual) {
+  const datos = cual === 'robots' ? ROBOTS : CANONES;
+  const nombre = cual === 'robots' ? 'robots.json' : 'cannons.json';
+  const texto = 'ARCHIVO ' + nombre + ':\n' + JSON.stringify(datos, null, 2);
+  const caja = document.getElementById('salida');
+  caja.value = texto;
+  caja.select();
+  try { navigator.clipboard.writeText(texto); } catch (e) { document.execCommand('copy'); }
+  document.getElementById('listo').textContent = 'Copiado ' + nombre + ' — pegalo en el chat';
+}
+</script>
+</body>
+</html>
