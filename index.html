@@ -39,17 +39,46 @@
   <div id="estado">descargando...</div>
 </div>
 <canvas id="unity-canvas" tabindex="-1"></canvas>
-<script src="Build/WebGL_v13.loader.js"></script>
+<script>
+  // OJO iPhone/Safari: el navegador crea el audio "dormido" y el despertador
+  // automatico de Unity falla a veces en iOS -> el juego queda MUDO.
+  // Capturamos todo AudioContext que se cree y lo despertamos al primer toque.
+  (function () {
+    var contextos = [];
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    function ACVigilado() {
+      var ctx = arguments.length ? new AC(arguments[0]) : new AC();
+      contextos.push(ctx);
+      return ctx;
+    }
+    ACVigilado.prototype = AC.prototype;
+    window.AudioContext = ACVigilado;
+    if (window.webkitAudioContext) window.webkitAudioContext = ACVigilado;
+    function despertar() {
+      // iOS ademas usa el estado "interrupted" (llamada, Siri, bloquear pantalla)
+      for (var i = 0; i < contextos.length; i++)
+        if (contextos[i].state !== "running" && contextos[i].state !== "closed") {
+          var p = contextos[i].resume();
+          if (p && p.catch) p.catch(function () {});
+        }
+    }
+    ["touchstart", "touchend", "pointerdown", "mousedown", "keydown"].forEach(function (ev) {
+      document.addEventListener(ev, despertar, true);
+    });
+  })();
+</script>
+<script src="Build/WebGL_v14.loader.js"></script>
 <script>
   createUnityInstance(document.querySelector("#unity-canvas"), {
     arguments: [],
-    dataUrl: "Build/WebGL_v13.data.unityweb",
-    frameworkUrl: "Build/WebGL_v13.framework.js.unityweb",
-    codeUrl: "Build/WebGL_v13.wasm.unityweb",
+    dataUrl: "Build/WebGL_v14.data.unityweb",
+    frameworkUrl: "Build/WebGL_v14.framework.js.unityweb",
+    codeUrl: "Build/WebGL_v14.wasm.unityweb",
     streamingAssetsUrl: "StreamingAssets",
     companyName: "Tulio Mendoza",
     productName: "ASEDIO ROBOT",
-    productVersion: "0.9.0",
+    productVersion: "0.10.0",
     devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
   }, function (progreso) {
     document.querySelector("#relleno").style.width = (progreso * 100) + "%";
