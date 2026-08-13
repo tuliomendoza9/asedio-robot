@@ -85,6 +85,32 @@
 
   // Registro de las llamadas al servidor: si una falla queda escrita en la
   // consola con su codigo. Sin esto los fallos de red del juego son mudos.
+  // OJO: Unity 6 usa fetch para UnityWebRequest, asi que hay que vigilar AMBOS.
+  (function () {
+    var fetchOriginal = window.fetch;
+    if (!fetchOriginal) return;
+    window.fetch = function (recurso, opciones) {
+      var url = typeof recurso === "string" ? recurso : (recurso && recurso.url) || "";
+      var metodo = (opciones && opciones.method) || (recurso && recurso.method) || "GET";
+      return fetchOriginal.apply(this, arguments).then(function (respuesta) {
+        if (String(url).indexOf("supabase") >= 0) {
+          var corto = String(url).replace(/^https:\/\/[^/]+/, "");
+          window.__redAsedio = window.__redAsedio || [];
+          window.__redAsedio.push({m: metodo, url: corto, estado: respuesta.status});
+          if (!respuesta.ok)
+            respuesta.clone().text().then(function (t) {
+              console.warn("RED ASEDIO " + metodo + " " + corto + " -> " + respuesta.status + " " + t.slice(0, 200));
+            });
+        }
+        return respuesta;
+      }).catch(function (e) {
+        if (String(url).indexOf("supabase") >= 0)
+          console.warn("RED ASEDIO " + metodo + " " + url + " -> SIN RESPUESTA " + e);
+        throw e;
+      });
+    };
+  })();
+
   (function () {
     var abrir = XMLHttpRequest.prototype.open;
     var enviar = XMLHttpRequest.prototype.send;
