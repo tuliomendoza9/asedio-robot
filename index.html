@@ -83,6 +83,18 @@
     });
   })();
 
+  // Contador de sonidos realmente disparados (para comprobar que el juego suena)
+  (function () {
+    window.__sonidos = 0;
+    var AC = window.AudioContext;
+    if (!AC || !window.AudioBufferSourceNode) return;
+    var arrancar = AudioBufferSourceNode.prototype.start;
+    AudioBufferSourceNode.prototype.start = function () {
+      window.__sonidos++;
+      return arrancar.apply(this, arguments);
+    };
+  })();
+
   // Registro de las llamadas al servidor: si una falla queda escrita en la
   // consola con su codigo. Sin esto los fallos de red del juego son mudos.
   // OJO: Unity 6 usa fetch para UnityWebRequest, asi que hay que vigilar AMBOS.
@@ -133,17 +145,17 @@
     };
   })();
 </script>
-<script src="Build/WebGL_v19.loader.js"></script>
+<script src="Build/WebGL_v20.loader.js"></script>
 <script>
   createUnityInstance(document.querySelector("#unity-canvas"), {
     arguments: [],
-    dataUrl: "Build/WebGL_v19.data.unityweb",
-    frameworkUrl: "Build/WebGL_v19.framework.js.unityweb",
-    codeUrl: "Build/WebGL_v19.wasm.unityweb",
+    dataUrl: "Build/WebGL_v20.data.unityweb",
+    frameworkUrl: "Build/WebGL_v20.framework.js.unityweb",
+    codeUrl: "Build/WebGL_v20.wasm.unityweb",
     streamingAssetsUrl: "StreamingAssets",
     companyName: "Tulio Mendoza",
     productName: "ASEDIO ROBOT",
-    productVersion: "0.11.1",
+    productVersion: "0.12.0",
     devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
   }, function (progreso) {
     document.querySelector("#relleno").style.width = (progreso * 100) + "%";
