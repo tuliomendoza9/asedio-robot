@@ -55,7 +55,22 @@
     ACVigilado.prototype = AC.prototype;
     window.AudioContext = ACVigilado;
     if (window.webkitAudioContext) window.webkitAudioContext = ACVigilado;
+    // El INTERRUPTOR fisico de silencio del iPhone mutea los juegos web.
+    // Truco conocido: un <audio> en bucle silencioso reclasifica la sesion
+    // como "reproduccion" y el juego suena aunque el interruptor este en rojo.
+    var etiquetaAudio = null;
+    function activarSesionAudio() {
+      if (etiquetaAudio) return;
+      var a = document.createElement("audio");
+      a.setAttribute("playsinline", "");
+      a.loop = true;
+      a.src = "data:audio/wav;base64,UklGRuwAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YcgAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==";
+      var p = a.play();
+      if (p && p.catch) p.catch(function () {});
+      etiquetaAudio = a;
+    }
     function despertar() {
+      activarSesionAudio();
       // iOS ademas usa el estado "interrupted" (llamada, Siri, bloquear pantalla)
       for (var i = 0; i < contextos.length; i++)
         if (contextos[i].state !== "running" && contextos[i].state !== "closed") {
@@ -68,13 +83,13 @@
     });
   })();
 </script>
-<script src="Build/WebGL_v14.loader.js"></script>
+<script src="Build/WebGL_v15.loader.js"></script>
 <script>
   createUnityInstance(document.querySelector("#unity-canvas"), {
     arguments: [],
-    dataUrl: "Build/WebGL_v14.data.unityweb",
-    frameworkUrl: "Build/WebGL_v14.framework.js.unityweb",
-    codeUrl: "Build/WebGL_v14.wasm.unityweb",
+    dataUrl: "Build/WebGL_v15.data.unityweb",
+    frameworkUrl: "Build/WebGL_v15.framework.js.unityweb",
+    codeUrl: "Build/WebGL_v15.wasm.unityweb",
     streamingAssetsUrl: "StreamingAssets",
     companyName: "Tulio Mendoza",
     productName: "ASEDIO ROBOT",
