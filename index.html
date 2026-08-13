@@ -83,17 +83,17 @@
     });
   })();
 </script>
-<script src="Build/WebGL_v15.loader.js"></script>
+<script src="Build/WebGL_v16.loader.js"></script>
 <script>
   createUnityInstance(document.querySelector("#unity-canvas"), {
     arguments: [],
-    dataUrl: "Build/WebGL_v15.data.unityweb",
-    frameworkUrl: "Build/WebGL_v15.framework.js.unityweb",
-    codeUrl: "Build/WebGL_v15.wasm.unityweb",
+    dataUrl: "Build/WebGL_v16.data.unityweb",
+    frameworkUrl: "Build/WebGL_v16.framework.js.unityweb",
+    codeUrl: "Build/WebGL_v16.wasm.unityweb",
     streamingAssetsUrl: "StreamingAssets",
     companyName: "Tulio Mendoza",
     productName: "ASEDIO ROBOT",
-    productVersion: "0.10.0",
+    productVersion: "0.11.0",
     devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
   }, function (progreso) {
     document.querySelector("#relleno").style.width = (progreso * 100) + "%";
