@@ -82,18 +82,42 @@
       document.addEventListener(ev, despertar, true);
     });
   })();
+
+  // Registro de las llamadas al servidor: si una falla queda escrita en la
+  // consola con su codigo. Sin esto los fallos de red del juego son mudos.
+  (function () {
+    var abrir = XMLHttpRequest.prototype.open;
+    var enviar = XMLHttpRequest.prototype.send;
+    window.__redAsedio = [];
+    XMLHttpRequest.prototype.open = function (metodo, url) {
+      this.__metodo = metodo; this.__url = url;
+      return abrir.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function () {
+      var xhr = this;
+      xhr.addEventListener("loadend", function () {
+        if (!xhr.__url || String(xhr.__url).indexOf("supabase") < 0) return;
+        var corto = String(xhr.__url).replace(/^https:\/\/[^/]+/, "");
+        window.__redAsedio.push({m: xhr.__metodo, url: corto, estado: xhr.status,
+                                 cuerpo: (xhr.responseText || "").slice(0, 200)});
+        if (xhr.status < 200 || xhr.status >= 300)
+          console.warn("RED ASEDIO " + xhr.__metodo + " " + corto + " -> " + xhr.status + " " + (xhr.responseText || "").slice(0, 200));
+      });
+      return enviar.apply(this, arguments);
+    };
+  })();
 </script>
-<script src="Build/WebGL_v16.loader.js"></script>
+<script src="Build/WebGL_v17.loader.js"></script>
 <script>
   createUnityInstance(document.querySelector("#unity-canvas"), {
     arguments: [],
-    dataUrl: "Build/WebGL_v16.data.unityweb",
-    frameworkUrl: "Build/WebGL_v16.framework.js.unityweb",
-    codeUrl: "Build/WebGL_v16.wasm.unityweb",
+    dataUrl: "Build/WebGL_v17.data.unityweb",
+    frameworkUrl: "Build/WebGL_v17.framework.js.unityweb",
+    codeUrl: "Build/WebGL_v17.wasm.unityweb",
     streamingAssetsUrl: "StreamingAssets",
     companyName: "Tulio Mendoza",
     productName: "ASEDIO ROBOT",
-    productVersion: "0.11.0",
+    productVersion: "0.11.1",
     devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
   }, function (progreso) {
     document.querySelector("#relleno").style.width = (progreso * 100) + "%";
